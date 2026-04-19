@@ -3,7 +3,7 @@
 > An IoT-based smart access control system using RFID authentication, real-time monitoring dashboard, and hybrid anomaly detection (rule-based + Isolation Forest ML).
 
 **Author:** Vetrivel Maheswaran  
-**Course:** ISTE730 — Foundations of IoT  | Spring 2026
+**Course:** ISTE730 — Foundations of IoT  | Spring 2026  
 **Institution:** Rochester Institute of Technology  
 
 ---
@@ -109,6 +109,8 @@ http://localhost:8000
 ---
 
 ## Hardware Requirements
+
+[![hardware](/documents/hardware_design.png)]
 
 | Component | Model | Notes |
 |---|---|---|
