@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>User Details — Security Gate</title>
+  <link rel="stylesheet" href="/dashboard/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <a href="/" class="back-btn">← Back</a>
+      <span class="header-icon">👤</span>
+      <div>
+        <h1 id="page-title">User Details</h1>
+        <p class="header-sub" id="page-uid">Loading...</p>
+      </div>
+    </div>
+    <span class="live-dot">● LIVE</span>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Scans</div>
+      <div class="stat-value" id="u-total">—</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Total IN</div>
+      <div class="stat-value" id="u-in">—</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Total OUT</div>
+      <div class="stat-value" id="u-out">—</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-label">Anomalies</div>
+      <div class="stat-value" id="u-anomaly">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Entry Hour</div>
+      <div class="stat-value" id="u-hour">—</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row-two-col">
+    <div class="panel chart-panel">
+      <div class="panel-title">Allowed vs Denied</div>
+      <div class="chart-wrap">
+        <canvas id="userPieChart"></canvas>
+      </div>
+    </div>
+    <div class="panel chart-panel">
+      <div class="panel-title">Scan Activity by Hour</div>
+      <div class="chart-wrap-bar">
+        <canvas id="userBarChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stay Durations -->
+  <div class="panel" id="stay-panel" style="display:none; margin-bottom:24px;">
+    <div class="panel-title">⏱ Stay Durations</div>
+    <div id="stay-list" class="stay-list"></div>
+  </div>
+
+  <!-- Logs -->
+  <div class="panel logs-panel">
+    <div class="panel-title">📋 Access History</div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Status</th>
+          <th>Event</th>
+          <th>Timestamp</th>
+          <th>Anomaly</th>
+        </tr>
+      </thead>
+      <tbody id="user-logs-tbody">
+        <tr><td colspan="5" class="empty-msg">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const uid = new URLSearchParams(window.location.search).get("uid");
+    let pieChart = null;
+    let barChart = null;
+
+    // Show UID while name loads
+    document.getElementById("page-uid").textContent = uid || "Unknown";
+
+    async function loadAll() {
+      if (!uid) return;
+      await Promise.all([loadBehaviour(), loadLogs()]);
+    }
+
+    async function loadBehaviour() {
+      try {
+        const res  = await fetch(`/api/behaviour/${encodeURIComponent(uid)}`);
+        const data = await res.json();
+
+        // Show name from backend
+        if (data.name) {
+          document.getElementById("page-title").textContent = data.name;
+          document.getElementById("page-uid").textContent = uid;
+        }
+
+        document.getElementById("u-total").textContent   = data.total_scans ?? "—";
+        document.getElementById("u-in").textContent      = data.total_in ?? "—";
+        document.getElementById("u-out").textContent     = data.total_out ?? "—";
+        document.getElementById("u-anomaly").textContent = data.anomaly_count ?? "—";
+        document.getElementById("u-hour").textContent    =
+          data.average_entry_hour != null
+            ? `${Math.floor(data.average_entry_hour)}:00`
+            : "—";
+
+        if (data.stay_durations_minutes && data.stay_durations_minutes.length > 0) {
+          document.getElementById("stay-panel").style.display = "block";
+          document.getElementById("stay-list").innerHTML =
+            data.stay_durations_minutes.map((d, i) =>
+              `<div class="stay-item">Visit ${i + 1}: <strong>${d} min</strong></div>`
+            ).join("");
+        }
+      } catch (e) {
+        console.error("[Behaviour]", e);
+      }
+    }
+
+    async function loadLogs() {
+      try {
+        const res  = await fetch(`/api/logs/user/${encodeURIComponent(uid)}`);
+        const logs = await res.json();
+        const tbody = document.getElementById("user-logs-tbody");
+
+        if (!logs || logs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="empty-msg">No logs found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = logs.map(log => `
+          <tr>
+            <td>${log.id}</td>
+            <td>${statusBadge(log.status)}</td>
+            <td>${eventTag(log.event)}</td>
+            <td>${formatTime(log.timestamp)}</td>
+            <td>${anomalyBadge(log.is_anomaly)}</td>
+          </tr>
+        `).join("");
+
+        // Charts
+        const allowed = logs.filter(l => l.status === "allowed").length;
+        const denied  = logs.filter(l => l.status === "denied").length;
+        renderPie(allowed, denied);
+
+        const hours = Array(24).fill(0);
+        logs.forEach(l => { hours[new Date(l.timestamp).getHours()]++; });
+        renderBar(hours);
+      } catch (e) {
+        console.error("[Logs]", e);
+      }
+    }
+
+    function renderPie(allowed, denied) {
+      const ctx = document.getElementById("userPieChart").getContext("2d");
+      if (pieChart) { pieChart.data.datasets[0].data = [allowed, denied]; pieChart.update(); return; }
+      pieChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Allowed", "Denied"],
+          datasets: [{ data: [allowed, denied], backgroundColor: ["#00c853", "#d50000"], borderColor: ["#00e676", "#ff5252"], borderWidth: 2 }],
+        },
+        options: { responsive: true, plugins: { legend: { position: "bottom", labels: { color: "#aaa", font: { size: 12 }, padding: 16 } } }, cutout: "65%" },
+      });
+    }
+
+    function renderBar(hours) {
+      const ctx    = document.getElementById("userBarChart").getContext("2d");
+      const labels = Array.from({length: 24}, (_, i) => `${i}:00`);
+      if (barChart) { barChart.data.datasets[0].data = hours; barChart.update(); return; }
+      barChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{ label: "Scans", data: hours, backgroundColor: "#2979ff88", borderColor: "#448aff", borderWidth: 1 }],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: "#666", font: { size: 10 } }, grid: { color: "#1e2130" } },
+            y: { ticks: { color: "#666" }, grid: { color: "#1e2130" }, beginAtZero: true },
+          },
+        },
+      });
+    }
+
+    function formatTime(isoStr) {
+      if (!isoStr) return "—";
+      return new Date(isoStr).toLocaleString("en-NZ", {
+        day: "2-digit", month: "short",
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+      });
+    }
+
+    function statusBadge(s) {
+      return s === "allowed"
+        ? `<span class="badge badge-allowed">Allowed</span>`
+        : `<span class="badge badge-denied">Denied</span>`;
+    }
+
+    function eventTag(e) {
+      if (e === "IN")  return `<span class="event-in">IN</span>`;
+      if (e === "OUT") return `<span class="event-out">OUT</span>`;
+      return `<span class="event-none">—</span>`;
+    }
+
+    function anomalyBadge(a) {
+      return a ? `<span class="badge badge-anomaly">⚠ Yes</span>` : `<span class="badge badge-ok">—</span>`;
+    }
+
+    loadAll();
+    setInterval(loadAll, 10000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Security Gate Dashboard</title>
+  <link rel="stylesheet" href="/dashboard/style.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <span class="header-icon">🔐</span>
+      <div>
+        <h1>Security Gate</h1>
+        <p class="header-sub">Access Control Dashboard</p>
+      </div>
+    </div>
+    <span class="live-dot">● LIVE</span>
+  </header>
+
+  <!-- ROW 1: Live Scan (left) + Chart (right) -->
+  <div class="row-two-col">
+    <div class="panel live-panel">
+      <div class="panel-title">⚡ Live Scan</div>
+      <div id="live-card">
+        <div class="live-waiting">Waiting for scan...</div>
+      </div>
+    </div>
+    <div class="panel chart-panel">
+      <div class="panel-title">Allowed vs Denied (All Time)</div>
+      <div class="chart-wrap">
+        <canvas id="statusChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Today Stats with live clock -->
+  <div class="today-header">
+    <span class="today-label">📅 Today's Stats</span>
+    <span id="today-clock" class="today-clock">—</span>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Scans</div>
+      <div class="stat-value" id="stat-total">—</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Allowed</div>
+      <div class="stat-value" id="stat-allowed">—</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Denied</div>
+      <div class="stat-value" id="stat-denied">—</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-label">Anomalies</div>
+      <div class="stat-value" id="stat-anomalies">—</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Unique Users</div>
+      <div class="stat-value" id="stat-users">—</div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Users (left) + Anomaly Alerts (right) -->
+  <div class="row-two-col">
+    <div class="panel">
+      <div class="panel-title">👥 Users</div>
+      <div id="users-list" class="users-list">
+        <p class="empty-msg">Loading...</p>
+      </div>
+    </div>
+    <div class="panel anomaly-panel">
+      <div class="panel-title-row">
+        <div class="panel-title">⚠ Anomaly Alerts</div>
+        <a href="/dashboard/anomalies.html" class="view-all-btn">View All →</a>
+      </div>
+      <div id="anomaly-list" class="anomaly-list">
+        <p class="empty-msg">No anomalies detected.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 4: Recent Logs with Filter -->
+  <div class="panel logs-panel">
+
+    <!-- Filter Bar -->
+    <div class="logs-header">
+      <div class="panel-title" style="margin-bottom:0">📋 Recent Access Logs</div>
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label class="filter-label">From</label>
+          <input type="date" id="filter-date-from" class="filter-input"/>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">To</label>
+          <input type="date" id="filter-date-to" class="filter-input"/>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Time From</label>
+          <input type="time" id="filter-time-from" class="filter-input"/>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Time To</label>
+          <input type="time" id="filter-time-to" class="filter-input"/>
+        </div>
+        <button id="filter-apply" class="filter-btn filter-btn-apply">Apply</button>
+        <button id="filter-reset" class="filter-btn filter-btn-reset">Reset</button>
+      </div>
+    </div>
+
+    <!-- Filter active indicator -->
+    <div id="filter-indicator" class="filter-indicator" style="display:none;"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>UID</th>
+          <th>Status</th>
+          <th>Event</th>
+          <th>Timestamp</th>
+          <th>Anomaly</th>
+        </tr>
+      </thead>
+      <tbody id="logs-tbody">
+        <tr><td colspan="6" class="empty-msg">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script src="/dashboard/app.js"></script>
+</body>
+</html>

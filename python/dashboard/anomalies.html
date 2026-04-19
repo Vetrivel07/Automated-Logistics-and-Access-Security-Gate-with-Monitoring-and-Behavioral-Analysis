@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Anomaly Alerts — Security Gate</title>
+  <link rel="stylesheet" href="/dashboard/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <a href="/" class="back-btn">← Back</a>
+      <span class="header-icon">⚠</span>
+      <div>
+        <h1>Anomaly Alerts</h1>
+        <p class="header-sub">All flagged suspicious activity</p>
+      </div>
+    </div>
+    <span class="live-dot">● LIVE</span>
+  </header>
+
+  <div class="panel">
+    <div id="all-anomalies" class="anomaly-list-full">
+      <p class="empty-msg">Loading...</p>
+    </div>
+  </div>
+
+  <script>
+    async function loadAnomalies() {
+      const res  = await fetch("/api/anomalies");
+      const data = await res.json();
+      const el   = document.getElementById("all-anomalies");
+
+      if (!data || data.length === 0) {
+        el.innerHTML = `<p class="empty-msg">No anomalies detected yet.</p>`;
+        return;
+      }
+
+      el.innerHTML = data.map(a => `
+        <div class="anomaly-item-full">
+          <div class="anomaly-row">
+            <span class="anomaly-uid">UID: ${a.uid}</span>
+            <span class="anomaly-time">${formatTime(a.timestamp)}</span>
+          </div>
+          <div class="anomaly-reason">${a.anomaly_reason || "Flagged"}</div>
+          <div class="anomaly-meta">
+            <span class="badge badge-${a.status}">${a.status.toUpperCase()}</span>
+            <span class="event-tag event-${a.event.toLowerCase()}">${a.event}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function formatTime(isoStr) {
+      if (!isoStr) return "—";
+      return new Date(isoStr).toLocaleString("en-NZ", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+      });
+    }
+
+    loadAnomalies();
+    setInterval(loadAnomalies, 5000);
+  </script>
+</body>
+</html>
