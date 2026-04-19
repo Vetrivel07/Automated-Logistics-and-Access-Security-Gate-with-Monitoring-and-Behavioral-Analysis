@@ -109,8 +109,7 @@ http://localhost:8000
 ---
 
 ## Hardware Requirements
-
-[![hardware](/documents/hardware_design.png)]
+[hardware](/documents/hardware_design.png)
 
 | Component | Model | Notes |
 |---|---|---|
