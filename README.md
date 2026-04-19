@@ -263,7 +263,7 @@ ANOMALY_RAPID_SCAN_WINDOW: int = 60 # seconds for rapid scan window
 
 ```bash
 # Make sure you are in the project directory
-cd security_gate
+cd python
 
 # Activate venv (if not already)
 venv\Scripts\activate
